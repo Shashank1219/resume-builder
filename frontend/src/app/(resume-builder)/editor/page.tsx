@@ -1,15 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { AccordionPanel } from "@/components/editor/AccordionPanel";
 import Template1 from "@/templates/template-1/Template1";
 import { useResumeStore } from "@/store/resumeStore";
 import { useScaleToFit } from "@/hooks/useScaleToFit";
-import { Download } from "lucide-react";
+import { Download, ChevronDown, FileText, Loader2 } from "lucide-react";
+import { exportAsDocx, exportAsPdf } from "@/lib/exportResume";
 
 export default function EditorPage() {
   const rawResumeData = useResumeStore((state) => state.resumeData);
   const [debouncedData, setDebouncedData] = useState(rawResumeData);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Debounce the preview update by 300ms
   useEffect(() => {
@@ -19,27 +23,88 @@ export default function EditorPage() {
     return () => clearTimeout(timer);
   }, [rawResumeData]);
 
+  // Handle click outside for dropdown
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleDownload = async (format: "docx" | "pdf") => {
+    setIsDownloading(true);
+    setShowDropdown(false);
+    
+    try {
+      const filename = `Resume_${rawResumeData.personalInfo.fullName.replace(/\s+/g, '_') || "Export"}.${format}`;
+      if (format === "docx") {
+        await exportAsDocx(rawResumeData, filename);
+      } else {
+        await exportAsPdf(rawResumeData, filename);
+      }
+    } catch (error) {
+      console.error("Export failed:", error);
+      alert(`Failed to export as ${format.toUpperCase()}`);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   // Use the scale hook (target 816px wide template, 64px padding)
   const { containerRef, scale } = useScaleToFit(816, 64);
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-white text-gray-900">
       {/* Header Bar */}
-      <header className="flex-none h-14 px-6 border-b border-gray-200 flex items-center justify-between bg-white z-10 shadow-sm">
+      <header className="flex-none h-14 px-6 border-b border-gray-200 flex items-center justify-between bg-white z-20 shadow-sm">
         <div className="flex items-center space-x-3">
           <div className="w-8 h-8 bg-blue-600 rounded-md flex items-center justify-center text-white font-bold text-lg leading-none">
             R
           </div>
           <h1 className="text-lg font-semibold text-gray-800 tracking-tight">Resume Builder</h1>
         </div>
-        <button className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1">
-          <Download size={16} />
-          <span>Download</span>
-        </button>
+        
+        <div className="relative" ref={dropdownRef}>
+          <button 
+            onClick={() => setShowDropdown(!showDropdown)}
+            disabled={isDownloading}
+            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 disabled:opacity-70 disabled:cursor-not-allowed"
+          >
+            {isDownloading ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Download size={16} />
+            )}
+            <span>Download</span>
+            <ChevronDown size={14} className={`transition-transform ${showDropdown ? "rotate-180" : ""}`} />
+          </button>
+          
+          {showDropdown && (
+            <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-30">
+              <button 
+                onClick={() => handleDownload("docx")}
+                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+              >
+                <FileText size={16} className="text-blue-600" />
+                <span>Download as .docx</span>
+              </button>
+              <button 
+                onClick={() => handleDownload("pdf")}
+                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+              >
+                <FileText size={16} className="text-red-500" />
+                <span>Download as .pdf</span>
+              </button>
+            </div>
+          )}
+        </div>
       </header>
 
       {/* Main Content: Two Panels */}
-      <main className="flex-1 flex overflow-hidden">
+      <main className="flex-1 flex overflow-hidden z-10">
         {/* Left Panel: Editor */}
         <div className="w-1/2 h-full border-r border-gray-200 bg-white relative">
           <AccordionPanel />
