@@ -2,12 +2,12 @@ import type { ResumeData } from "@/types/resume";
 
 export const sampleResumeData: ResumeData = {
   personalInfo: {
-    fullName: "Alex Morgan",
-    linkedinUrl: "https://linkedin.com/in/alex-morgan-data",
+    fullName: "John Doe",
+    linkedinUrl: "https://linkedin.com/in/john-doe",
     phone: "+49 151 23456789",
     city: "Berlin",
     country: "Germany",
-    email: "alex.morgan@email.com",
+    email: "john.doe@email.com",
   },
   profile: {
     summaryText:
