@@ -14,6 +14,7 @@ const initialResumeData: ResumeData = {
   personalInfo: {
     fullName: "",
     linkedinUrl: "",
+    portfolioUrl: "",
     phone: "",
     city: "",
     country: "",

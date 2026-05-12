@@ -52,12 +52,21 @@ export function PersonalInfoForm() {
         />
       </div>
       <div className="flex flex-col space-y-1">
-        <label className="text-sm font-medium text-gray-700">LinkedIn / Portfolio</label>
+        <label className="text-sm font-medium text-gray-700">LinkedIn</label>
         <input
           type="url"
           className="border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
           value={data.linkedinUrl}
           onChange={(e) => update("linkedinUrl", e.target.value)}
+        />
+      </div>
+      <div className="flex flex-col space-y-1">
+        <label className="text-sm font-medium text-gray-700">Portfolio URL</label>
+        <input
+          type="url"
+          className="border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+          value={data.portfolioUrl || ""}
+          onChange={(e) => update("portfolioUrl", e.target.value)}
         />
       </div>
     </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   DndContext,
   closestCenter,
@@ -23,6 +23,8 @@ import { WorkExperienceForm } from "./WorkExperienceForm";
 import { EducationForm } from "./EducationForm";
 import { ProjectForm } from "./ProjectForm";
 import { SkillsForm } from "./SkillsForm";
+import { LanguagesForm } from "./LanguagesForm";
+import { CertificationsForm } from "./CertificationsForm";
 import { RichTextEditor } from "./RichTextEditor";
 import { ChevronDown, ChevronUp } from "lucide-react";
 
@@ -40,7 +42,12 @@ export function AccordionPanel() {
   const sectionOrder = useResumeStore((state) => state.sectionOrder);
   const reorderSections = useResumeStore((state) => state.reorderSections);
   const profileText = useResumeStore((state) => state.resumeData.profile.summaryText);
-  const [openSections, setOpenSections] = useState<Set<string>>(new Set(["personalInfo", "profile"]));
+  const [openSections, setOpenSections] = useState<Set<string>>(new Set(["personalInfo"]));
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -55,13 +62,10 @@ export function AccordionPanel() {
 
   const toggleSection = (id: string) => {
     setOpenSections((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
+      if (prev.has(id)) {
+        return new Set();
       }
-      return next;
+      return new Set([id]);
     });
   };
 
@@ -81,7 +85,7 @@ export function AccordionPanel() {
         return (
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700">Summary / Profile</label>
-            <div className="bg-white rounded-md">
+            <div className="bg-white rounded-md border">
               <RichTextEditor
                 value={profileText}
                 onChange={(html) =>
@@ -102,16 +106,18 @@ export function AccordionPanel() {
       case "projects":
         return <ProjectForm />;
       case "languages":
-        return <div className="text-sm text-gray-500 py-4 text-center">Languages form coming soon</div>;
+        return <LanguagesForm />;
       case "certifications":
-        return <div className="text-sm text-gray-500 py-4 text-center">Certifications form coming soon</div>;
+        return <CertificationsForm />;
       default:
         return null;
     }
   };
 
+  if (!isMounted) return null;
+
   return (
-    <div className="w-full h-full overflow-y-auto bg-white p-6 flex flex-col">
+    <div className="w-full min-h-full p-6 flex flex-col">
       {/* Static Personal Info Section */}
       <div className="mb-4 border border-gray-200 rounded-md bg-white shadow-sm overflow-hidden">
         <div

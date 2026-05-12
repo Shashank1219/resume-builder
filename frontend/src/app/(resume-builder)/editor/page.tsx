@@ -106,14 +106,16 @@ export default function EditorPage() {
       {/* Main Content: Two Panels */}
       <main className="flex-1 flex overflow-hidden z-10">
         {/* Left Panel: Editor */}
-        <div className="w-1/2 h-full border-r border-gray-200 bg-white relative">
-          <AccordionPanel />
+        <div className="w-[30%] h-full border-r border-gray-200 bg-white relative">
+          <div className="absolute inset-0 overflow-y-auto">
+            <AccordionPanel />
+          </div>
         </div>
 
         {/* Right Panel: Preview */}
         <div 
           ref={containerRef} 
-          className="w-1/2 h-full overflow-y-auto bg-gray-100 flex justify-center py-8 relative"
+          className="w-[70%] h-full overflow-y-auto bg-gray-100 flex justify-center py-8 relative"
         >
           {/* Scaled Wrapper */}
           <div 
@@ -126,7 +128,7 @@ export default function EditorPage() {
             }}
           >
             <div className="shadow-2xl rounded-sm overflow-hidden bg-white ring-1 ring-gray-900/5">
-              <Template1 data={debouncedData} />
+              <Template1 data={debouncedData} sectionOrder={useResumeStore((state) => state.sectionOrder)} />
             </div>
           </div>
         </div>
