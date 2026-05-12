@@ -59,6 +59,7 @@ backend/.env.*.local
 AGENTS.md
 CLAUDE.md
 claude.md
+graphify.md
 
 # ============================================================================
 # IDE & EDITOR
