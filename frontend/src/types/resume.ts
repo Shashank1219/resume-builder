@@ -23,6 +23,7 @@ export type SectionKey =
 export interface PersonalInfo {
   fullName: string;
   linkedinUrl: string;
+  portfolioUrl: string;
   phone: string;
   city: string;
   country: string;
