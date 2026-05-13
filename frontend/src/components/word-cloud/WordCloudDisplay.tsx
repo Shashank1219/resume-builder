@@ -1,51 +1,50 @@
-import React from 'react';
-import ReactWordcloud from 'react-wordcloud';
-import type { WordCloudKeyword } from '@/lib/api/keywordScoringApi';
+import React from "react";
 
-interface WordCloudDisplayProps {
-  keywords: WordCloudKeyword[];
+export interface WordCloudKeyword {
+  keyword: string;
+  frequency: number;
 }
 
-const WordCloudDisplay: React.FC<WordCloudDisplayProps> = ({ keywords }) => {
-  if (!keywords || keywords.length === 0) {
-    return (
-      <div className="h-[280px] w-full flex items-center justify-center bg-gray-50 rounded-lg border border-dashed border-gray-300">
-        <span className="text-sm text-gray-400">No keywords extracted yet.</span>
-      </div>
-    );
-  }
+interface WordCloudDisplayProps {
+  image: string | null;
+  keywords?: WordCloudKeyword[];
+}
 
-  const options = {
-    fontSizes: [14, 48] as [number, number],
-    rotationAngles: [0, 0] as [number, number],
-    deterministic: true,
-    enableTooltip: true,
-    fontFamily: 'Inter, system-ui, sans-serif',
-    padding: 2,
-    rotations: 1,
-    transitionDuration: 1000,
-  };
-
-  const callbacks = {
-    getWordColor: (word: any) => {
-      // Find the original keyword to get its category
-      const kw = keywords.find((k) => k.text === word.text);
-      if (kw?.category === 'technical') {
-        return '#2563EB'; // tailwind blue-600
-      }
-      return '#059669'; // tailwind emerald-600
-    },
-  };
-
+const WordCloudDisplay: React.FC<WordCloudDisplayProps> = ({ image, keywords = [] }) => {
   return (
-    <div className="h-[280px] w-full bg-white rounded-lg p-2 border border-gray-200 shadow-sm flex items-center justify-center">
-      <div className="w-full h-full">
-        <ReactWordcloud
-          words={keywords}
-          options={options}
-          callbacks={callbacks}
-        />
-      </div>
+    <div className="space-y-4">
+      {image ? (
+        <div className="w-full bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+          <img
+            src={`data:image/png;base64,${image}`}
+            alt="Job description word cloud — font size reflects how often each term appears in the JD"
+            className="w-full h-auto"
+          />
+        </div>
+      ) : (
+        <div className="h-[280px] w-full flex items-center justify-center bg-gray-50 rounded-lg border border-dashed border-gray-300">
+          <span className="text-sm text-gray-400">No word cloud yet. Analyse a job description first.</span>
+        </div>
+      )}
+
+      {keywords.length > 0 ? (
+        <div>
+          <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+            Semantic keywords (weighted by frequency in the JD)
+          </h4>
+          <ul className="flex flex-wrap gap-2 max-h-52 overflow-y-auto pr-1">
+            {keywords.map((k, i) => (
+              <li
+                key={`${k.keyword}-${i}`}
+                className="text-xs px-2.5 py-1 bg-slate-100 text-slate-800 rounded-md border border-slate-200"
+              >
+                <span className="font-medium">{k.keyword}</span>
+                <span className="text-slate-500 ml-1 tabular-nums">×{k.frequency}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </div>
   );
 };

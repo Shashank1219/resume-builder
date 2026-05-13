@@ -26,7 +26,7 @@ const stripHtml = (html: string) => {
 };
 
 export async function exportAsDocx(data: ResumeData, filename: string): Promise<void> {
-  const { personalInfo, profile, skills, experience, education, projects } = data;
+  const { personalInfo, profile, skills, experience, education, projects, languages, certifications } = data;
 
   const children: any[] = [];
 
@@ -46,6 +46,7 @@ export async function exportAsDocx(data: ResumeData, filename: string): Promise<
 
   const contactInfo = [
     personalInfo.linkedinUrl,
+    personalInfo.portfolioUrl,
     personalInfo.phone,
     [personalInfo.city, personalInfo.country].filter(Boolean).join(", "),
     personalInfo.email,
@@ -207,6 +208,44 @@ export async function exportAsDocx(data: ResumeData, filename: string): Promise<
           children: [
             new TextRun({ text: `${skill.categoryName}: `, bold: true }),
             new TextRun({ text: skill.skills }),
+          ],
+        })
+      );
+    });
+  }
+
+  if (languages.length > 0) {
+    children.push(
+      new Paragraph({
+        text: "LANGUAGES",
+        heading: HeadingLevel.HEADING_2,
+        spacing: { before: 300, after: 100 },
+      })
+    );
+    languages.forEach((lang) => {
+      children.push(
+        new Paragraph({
+          text: `${lang.language}: ${lang.proficiencyLabel} (${lang.cefrLevel})`,
+        })
+      );
+    });
+  }
+
+  if (certifications.length > 0) {
+    children.push(
+      new Paragraph({
+        text: "CERTIFICATIONS",
+        heading: HeadingLevel.HEADING_2,
+        spacing: { before: 300, after: 100 },
+      })
+    );
+    certifications.forEach((cert) => {
+      children.push(
+        new Paragraph({
+          children: [
+            new TextRun({ text: cert.certName, bold: true }),
+            new TextRun({ text: ` (${cert.issuer})` }),
+            new TextRun({ text: `  |  ${cert.date}` }),
           ],
         })
       );

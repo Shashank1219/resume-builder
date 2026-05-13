@@ -12,6 +12,7 @@ class PersonalInfoResponse(BaseModel):
 
     full_name: Optional[str] = Field(default=None, alias="fullName")
     linkedin_url: Optional[str] = Field(default=None, alias="linkedinUrl")
+    portfolio_url: Optional[str] = Field(default=None, alias="portfolioUrl")
     phone: Optional[str] = Field(default=None, alias="phone")
     city: Optional[str] = Field(default=None, alias="city")
     country: Optional[str] = Field(default=None, alias="country")
@@ -97,6 +98,11 @@ class KeywordScoreRequest(BaseModel):
 
     resume_text: str = Field(..., alias="resumeText")
     job_description_id: str = Field(..., alias="jobDescriptionId")
+    job_description: Optional[str] = Field(
+        None,
+        alias="jobDescription",
+        description="Current JD text for keyword overlap and cache rehydration.",
+    )
 
 class KeywordScoreResponse(BaseModel):
     """Response model for keyword scoring."""
@@ -111,17 +117,19 @@ class WordCloudRequest(BaseModel):
 
     job_description: str = Field(..., alias="jobDescription")
 
-class WordCloudKeyword(BaseModel):
-    """A single keyword for a word cloud visualization."""
+
+class KeywordItem(BaseModel):
+    """One weighted keyword from the job description (frequency matches word cloud sizing)."""
     model_config = ConfigDict(populate_by_name=True)
 
-    text: str = Field(..., alias="text")
-    value: float = Field(..., alias="value")
-    category: str = Field(..., alias="category")
+    keyword: str
+    frequency: int
+
 
 class WordCloudResponse(BaseModel):
-    """Response model for word cloud generation."""
+    """Word cloud PNG plus ranked keywords (same frequencies used for cloud font sizes)."""
     model_config = ConfigDict(populate_by_name=True)
 
-    keywords: list[WordCloudKeyword] = Field(default_factory=list, alias="keywords")
+    image: str = Field(..., alias="image")
     job_description_id: str = Field(..., alias="jobDescriptionId")
+    keywords: list[KeywordItem] = Field(default_factory=list, alias="keywords")

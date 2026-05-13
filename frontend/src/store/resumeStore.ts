@@ -10,18 +10,26 @@ import type {
   SkillCategory,
 } from "../types/resume";
 
-import { 
-  WordCloudKeyword, 
-  generateWordCloud, 
-  parseResume, 
-  computeKeywordScore 
+import {
+  generateWordCloud,
+  parseResume,
+  computeKeywordScore,
 } from "@/lib/api/keywordScoringApi";
+
+function plainTextFromHtml(html: string): string {
+  if (!html) return "";
+  if (typeof window !== "undefined") {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    return (doc.body.textContent || "").replace(/\s+/g, " ").trim();
+  }
+  return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+}
 
 const initialResumeData: ResumeData = {
   personalInfo: {
     fullName: "",
     linkedinUrl: "",
-    portfolioUrl: "", // Phase 1 update
+    portfolioUrl: "",
     phone: "",
     city: "",
     country: "",
@@ -58,7 +66,8 @@ interface ResumeStore {
   // Phase 2 State
   jobDescription: string;
   jobDescriptionId: string | null;
-  wordCloudKeywords: WordCloudKeyword[];
+  wordCloudImage: string | null;
+  jdKeywords: { keyword: string; frequency: number }[];
   keywordScore: number | null;
   parseWarnings: string[];
   scoringStep: 'input' | 'upload' | 'results';
@@ -100,7 +109,8 @@ export const useResumeStore = create<ResumeStore>()(
     // Phase 2 Initial State
     jobDescription: "",
     jobDescriptionId: null,
-    wordCloudKeywords: [],
+    wordCloudImage: null,
+    jdKeywords: [],
     keywordScore: null,
     parseWarnings: [],
     scoringStep: 'input',
@@ -129,7 +139,7 @@ export const useResumeStore = create<ResumeStore>()(
 
     updateWorkExperience: (id, field, value) =>
       set((state) => {
-        const index = state.resumeData.experience.findIndex((e) => e.id === id);
+        const index = state.resumeData.experience.findIndex((e: { id: string; }) => e.id === id);
         if (index !== -1) {
           state.resumeData.experience[index][field] = value as never;
         }
@@ -137,7 +147,7 @@ export const useResumeStore = create<ResumeStore>()(
 
     removeWorkExperience: (id) =>
       set((state) => {
-        state.resumeData.experience = state.resumeData.experience.filter((e) => e.id !== id);
+        state.resumeData.experience = state.resumeData.experience.filter((e: { id: string; }) => e.id !== id);
       }),
 
     addEducation: () =>
@@ -155,7 +165,7 @@ export const useResumeStore = create<ResumeStore>()(
 
     updateEducation: (id, field, value) =>
       set((state) => {
-        const index = state.resumeData.education.findIndex((e) => e.id === id);
+        const index = state.resumeData.education.findIndex((e: { id: string; }) => e.id === id);
         if (index !== -1) {
           state.resumeData.education[index][field] = value as never;
         }
@@ -163,7 +173,7 @@ export const useResumeStore = create<ResumeStore>()(
 
     removeEducation: (id) =>
       set((state) => {
-        state.resumeData.education = state.resumeData.education.filter((e) => e.id !== id);
+        state.resumeData.education = state.resumeData.education.filter((e: { id: string; }) => e.id !== id);
       }),
 
     addProject: () =>
@@ -178,7 +188,7 @@ export const useResumeStore = create<ResumeStore>()(
 
     updateProject: (id, field, value) =>
       set((state) => {
-        const index = state.resumeData.projects.findIndex((e) => e.id === id);
+        const index = state.resumeData.projects.findIndex((e: { id: string; }) => e.id === id);
         if (index !== -1) {
           state.resumeData.projects[index][field] = value as never;
         }
@@ -186,12 +196,12 @@ export const useResumeStore = create<ResumeStore>()(
 
     removeProject: (id) =>
       set((state) => {
-        state.resumeData.projects = state.resumeData.projects.filter((e) => e.id !== id);
+        state.resumeData.projects = state.resumeData.projects.filter((e: { id: string; }) => e.id !== id);
       }),
 
     updateSkills: (id, field, value) =>
       set((state) => {
-        const index = state.resumeData.skills.findIndex((e) => e.id === id);
+        const index = state.resumeData.skills.findIndex((e: { id: string; }) => e.id === id);
         if (index !== -1) {
           state.resumeData.skills[index][field] = value as never;
         }
@@ -235,8 +245,9 @@ export const useResumeStore = create<ResumeStore>()(
       try {
         const res = await generateWordCloud(jd);
         set((state) => {
-          state.wordCloudKeywords = res.keywords;
+          state.wordCloudImage = res.image;
           state.jobDescriptionId = res.jobDescriptionId;
+          state.jdKeywords = res.keywords ?? [];
           state.scoringStep = 'upload';
         });
       } catch (err: any) {
@@ -302,14 +313,18 @@ export const useResumeStore = create<ResumeStore>()(
         const resumeText = [
           resumeData.personalInfo.fullName,
           resumeData.personalInfo.linkedinUrl,
-          resumeData.profile.summaryText,
+          plainTextFromHtml(resumeData.profile.summaryText),
           ...resumeData.skills.map((s) => `${s.categoryName}: ${s.skills}`),
-          ...resumeData.experience.map((e) => `${e.jobTitle} ${e.companyName} ${(e.bulletPoints || []).join(" ")}`),
+          ...resumeData.experience.map((e) =>
+            `${e.jobTitle} ${e.companyName} ${(e.bulletPoints || []).map((bp) => plainTextFromHtml(bp)).join(" ")}`
+          ),
           ...resumeData.education.map((e) => `${e.degreeType} ${e.fieldOfStudy} ${e.institution}`),
-          ...resumeData.projects.map((p) => `${p.projectTitle} ${p.synopsis}`),
+          ...resumeData.projects.map((p) => `${p.projectTitle} ${plainTextFromHtml(p.synopsis)}`),
+          ...resumeData.languages.map((l) => `${l.language} ${l.proficiencyLabel} ${l.cefrLevel}`),
+          ...resumeData.certifications.map((c) => `${c.certName} ${c.issuer} ${c.date}`),
         ].join(" ");
 
-        const res = await computeKeywordScore(resumeText, jdId);
+        const res = await computeKeywordScore(resumeText, jdId, get().jobDescription);
         set((state) => {
           state.keywordScore = res.score;
           state.scoringStep = 'results';

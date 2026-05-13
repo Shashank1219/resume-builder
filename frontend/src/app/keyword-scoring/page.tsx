@@ -19,11 +19,12 @@ export default function KeywordScoringPage() {
     scoringError,
     uploadAndParseResume,
     keywordScore,
-    wordCloudKeywords,
+    wordCloudImage,
+    jdKeywords,
     parseWarnings,
     setScoringStep,
     refreshScore,
-    resumeData
+    resumeData,
   } = useResumeStore();
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -195,7 +196,7 @@ export default function KeywordScoringPage() {
 
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
             <h3 className="font-bold text-[#0a192f] mb-4 text-center">Job Description Word Cloud</h3>
-            <WordCloudDisplay keywords={wordCloudKeywords} />
+            <WordCloudDisplay image={wordCloudImage} keywords={jdKeywords} />
           </div>
         </div>
 

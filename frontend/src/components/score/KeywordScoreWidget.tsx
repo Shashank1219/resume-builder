@@ -52,7 +52,7 @@ const KeywordScoreWidget: React.FC<KeywordScoreWidgetProps> = ({ score, isRefres
         <div className="flex items-baseline z-10">
           {score !== null ? (
             <>
-              <span className="text-3xl font-bold text-gray-800">{Math.round(score)}</span>
+              <span className="text-3xl font-bold text-gray-800">{score.toFixed(1)}</span>
               <span className="text-lg text-gray-500 font-semibold">%</span>
             </>
           ) : (

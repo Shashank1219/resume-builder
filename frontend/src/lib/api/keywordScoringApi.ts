@@ -9,15 +9,15 @@ import type {
   CertEntry,
 } from "@/types/resume";
 
-export interface WordCloudKeyword {
-  text: string;
-  value: number;
-  category: "technical" | "soft_skill";
+export interface WordCloudKeywordItem {
+  keyword: string;
+  frequency: number;
 }
 
 export interface WordCloudResponse {
-  keywords: WordCloudKeyword[];
+  image: string;
   jobDescriptionId: string;
+  keywords: WordCloudKeywordItem[];
 }
 
 export interface KeywordScoreResponse {
@@ -71,13 +71,23 @@ export async function generateWordCloud(jobDescription: string): Promise<WordClo
   return response.json();
 }
 
-export async function computeKeywordScore(resumeText: string, jobDescriptionId: string): Promise<KeywordScoreResponse> {
+export async function computeKeywordScore(
+  resumeText: string,
+  jobDescriptionId: string,
+  jobDescription?: string,
+): Promise<KeywordScoreResponse> {
   const response = await fetch("/api/keyword-score", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ resumeText, jobDescriptionId }),
+    body: JSON.stringify({
+      resumeText,
+      jobDescriptionId,
+      ...(jobDescription != null && jobDescription !== ""
+        ? { jobDescription }
+        : {}),
+    }),
   });
 
   if (!response.ok) {

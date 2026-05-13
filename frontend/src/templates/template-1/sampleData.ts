@@ -4,6 +4,7 @@ export const sampleResumeData: ResumeData = {
   personalInfo: {
     fullName: "Alex Morgan",
     linkedinUrl: "https://linkedin.com/in/alex-morgan-data",
+    portfolioUrl: "https://alexmorgan.dev",
     phone: "+49 151 23456789",
     city: "Berlin",
     country: "Germany",
