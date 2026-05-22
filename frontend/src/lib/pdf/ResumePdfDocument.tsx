@@ -1,15 +1,29 @@
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
-import type { ResumeData } from "@/types/resume";
+import type { ResumeData, SectionKey } from "@/types/resume";
+import {
+  TEMPLATE1_SECTION_ORDER,
+  TEMPLATE1_SECTION_TITLES,
+} from "@/templates/template-1/template1Spec";
+import { htmlToPlainText } from "@/templates/template-1/htmlToDocxRuns";
+
+const BLUE = "#1155CC";
 
 const styles = StyleSheet.create({
-  page: { padding: 40, fontFamily: "Helvetica", fontSize: 10, color: "#000" },
-  name: { fontSize: 18, textAlign: "center", marginBottom: 3 },
-  contact: { fontSize: 9, textAlign: "center", marginBottom: 10 },
+  page: {
+    padding: 40,
+    fontFamily: "Helvetica",
+    fontSize: 11,
+    color: "#000",
+    lineHeight: 1.35,
+  },
+  name: { fontSize: 20, textAlign: "center", marginBottom: 2 },
+  contactLine: { fontSize: 11, textAlign: "center", marginBottom: 1 },
+  contactLink: { color: BLUE },
   sectionHeading: {
-    fontSize: 12,
-    color: "#1155CC",
+    fontSize: 13,
+    color: BLUE,
     borderBottomWidth: 1,
-    borderBottomColor: "#1155CC",
+    borderBottomColor: BLUE,
     paddingBottom: 2,
     marginTop: 10,
     marginBottom: 4,
@@ -17,150 +31,167 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", justifyContent: "space-between", marginBottom: 2 },
   bold: { fontFamily: "Helvetica-Bold" },
   italic: { fontFamily: "Helvetica-Oblique" },
-  small: { fontSize: 9 },
-  bullet: { marginLeft: 8, marginBottom: 1 },
+  bullet: { marginLeft: 12, marginBottom: 2 },
+  skillLine: { marginBottom: 1 },
+  langLabel: { width: 72 },
 });
-
-const getListItems = (html: string): string[] => {
-  if (!html) return [];
-  return html
-    .replace(/<li>/gi, "\n• ")
-    .replace(/<\/li>/gi, "")
-    .replace(/<[^>]+>/g, "")
-    .split("\n")
-    .map((s) => s.trim())
-    .filter(Boolean);
-};
-
-const stripHtml = (html: string): string => {
-  if (!html) return "";
-  return html.replace(/<[^>]+>/g, "");
-};
 
 interface Props {
   data: ResumeData;
+  sectionOrder?: SectionKey[];
 }
 
-export function ResumePdfDocument({ data }: Props): JSX.Element {
-  const { personalInfo, profile, skills, experience, education, projects, languages, certifications } = data;
+export function ResumePdfDocument({ data, sectionOrder }: Props): JSX.Element {
+  const { personalInfo, profile, skills, experience, education, projects, languages, certifications } =
+    data;
+  const order = sectionOrder?.length ? sectionOrder : TEMPLATE1_SECTION_ORDER;
   const cityCountry = [personalInfo.city, personalInfo.country].filter(Boolean).join(", ");
-  const contact = [
-    personalInfo.linkedinUrl,
-    personalInfo.portfolioUrl,
-    personalInfo.phone,
-    cityCountry,
-    personalInfo.email,
-  ]
-    .filter(Boolean)
-    .join("  •  ");
+
+  const line2 = [personalInfo.linkedinUrl, personalInfo.portfolioUrl].filter((s) => s?.trim());
+  const line3 = [personalInfo.phone, cityCountry, personalInfo.email].filter((s) => s?.trim());
+
+  const sectionBlocks: Record<SectionKey, JSX.Element | null> = {
+    profile: profile.summaryText.trim() ? (
+      <View key="profile">
+        <Text style={styles.sectionHeading}>{TEMPLATE1_SECTION_TITLES.profile}</Text>
+        <Text>{htmlToPlainText(profile.summaryText)}</Text>
+      </View>
+    ) : null,
+    skills:
+      skills.length > 0 ? (
+        <View key="skills">
+          <Text style={styles.sectionHeading}>{TEMPLATE1_SECTION_TITLES.skills}</Text>
+          {skills.map((s) => (
+            <Text key={s.id} style={styles.skillLine}>
+              <Text style={styles.bold}>{s.categoryName}: </Text>
+              {s.skills}
+            </Text>
+          ))}
+        </View>
+      ) : null,
+    experience:
+      experience.length > 0 ? (
+        <View key="experience">
+          <Text style={styles.sectionHeading}>{TEMPLATE1_SECTION_TITLES.experience}</Text>
+          {experience.map((e) => (
+            <View key={e.id} style={{ marginBottom: 6 }}>
+              <View style={styles.row}>
+                <Text style={styles.bold}>
+                  {e.jobTitle}  {e.companyName}
+                </Text>
+                <Text style={styles.bold}>
+                  {e.startDate} - {e.isCurrent ? "Present" : e.endDate}
+                </Text>
+              </View>
+              {e.location ? <Text>{e.location}</Text> : null}
+              {e.bulletPoints.map((bp, i) => {
+                const text = htmlToPlainText(bp);
+                return text ? (
+                  <Text key={i} style={styles.bullet}>
+                    • {text}
+                  </Text>
+                ) : null;
+              })}
+            </View>
+          ))}
+        </View>
+      ) : null,
+    education:
+      education.length > 0 ? (
+        <View key="education">
+          <Text style={styles.sectionHeading}>{TEMPLATE1_SECTION_TITLES.education}</Text>
+          {education.map((e) => (
+            <View key={e.id} style={styles.row}>
+              <Text style={{ flex: 1, paddingRight: 8 }}>
+                <Text style={styles.bold}>
+                  {e.degreeType}: {e.fieldOfStudy}
+                </Text>
+                {`, ${e.institution}, ${e.location}`}
+              </Text>
+              <Text>
+                {e.startYear} - {e.endYear}
+              </Text>
+            </View>
+          ))}
+        </View>
+      ) : null,
+    projects:
+      projects.length > 0 ? (
+        <View key="projects">
+          <Text style={styles.sectionHeading}>{TEMPLATE1_SECTION_TITLES.projects}</Text>
+          {projects.map((p) => (
+            <View key={p.id} style={{ marginBottom: 4 }}>
+              <View style={styles.row}>
+                <Text style={styles.bold}>{p.projectTitle}:</Text>
+                <Text style={styles.bold}>{p.date}</Text>
+              </View>
+              {htmlToPlainText(p.synopsis) ? (
+                <Text style={styles.bullet}>• {htmlToPlainText(p.synopsis)}</Text>
+              ) : null}
+            </View>
+          ))}
+        </View>
+      ) : null,
+    languages:
+      languages.length > 0 ? (
+        <View key="languages">
+          <Text style={styles.sectionHeading}>{TEMPLATE1_SECTION_TITLES.languages}</Text>
+          {languages.map((l) => (
+            <View key={l.id} style={{ flexDirection: "row" }}>
+              <Text style={styles.langLabel}>{l.language}:</Text>
+              <Text>
+                {l.proficiencyLabel} ({l.cefrLevel})
+              </Text>
+            </View>
+          ))}
+        </View>
+      ) : null,
+    certifications:
+      certifications.length > 0 ? (
+        <View key="certifications">
+          <Text style={styles.sectionHeading}>{TEMPLATE1_SECTION_TITLES.certifications}</Text>
+          {certifications.map((c) => (
+            <View key={c.id} style={styles.row}>
+              <Text style={{ flex: 1, paddingRight: 8 }}>
+                {c.certName} ({c.issuer})
+              </Text>
+              <Text style={styles.bold}>{c.date}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null,
+  };
 
   return (
     <Document>
       <Page size="LETTER" style={styles.page}>
-        <Text style={styles.name}>{personalInfo.fullName || "Your Name"}</Text>
-        {contact ? <Text style={styles.contact}>{contact}</Text> : null}
+        <Text style={styles.name}>{personalInfo.fullName.trim() || "Your Name"}</Text>
 
-        {profile.summaryText ? (
-          <View>
-            <Text style={styles.sectionHeading}>Profile</Text>
-            <Text>{stripHtml(profile.summaryText)}</Text>
-          </View>
-        ) : null}
-
-        {skills.length > 0 ? (
-          <View>
-            <Text style={styles.sectionHeading}>Skills & Technologies</Text>
-            {skills.map((s) => (
-              <Text key={s.id}>
-                <Text style={styles.bold}>{s.categoryName}: </Text>
-                {s.skills}
+        {line2.length > 0 ? (
+          <Text style={styles.contactLine}>
+            {line2.map((part, i) => (
+              <Text key={i}>
+                {i > 0 ? " • " : ""}
+                <Text style={styles.contactLink}>{part.trim()}</Text>
               </Text>
             ))}
-          </View>
+          </Text>
         ) : null}
 
-        {experience.length > 0 ? (
-          <View>
-            <Text style={styles.sectionHeading}>Work Experience</Text>
-            {experience.map((e) => (
-              <View key={e.id} style={{ marginBottom: 6 }}>
-                <View style={styles.row}>
-                  <Text style={styles.bold}>
-                    {e.jobTitle}  {e.companyName}
-                  </Text>
-                  <Text style={styles.bold}>
-                    {e.startDate} - {e.isCurrent ? "Present" : e.endDate}
-                  </Text>
-                </View>
-                <Text style={[styles.italic, styles.small]}>{e.location}</Text>
-                {getListItems(e.bulletPoints.join("")).map((bp, i) => (
-                  <Text key={i} style={styles.bullet}>
-                    {bp}
-                  </Text>
-                ))}
-              </View>
-            ))}
-          </View>
-        ) : null}
-
-        {education.length > 0 ? (
-          <View>
-            <Text style={styles.sectionHeading}>Education</Text>
-            {education.map((e) => (
-              <View key={e.id} style={styles.row}>
-                <Text>
-                  <Text style={styles.bold}>
-                    {e.degreeType}: {e.fieldOfStudy}
-                  </Text>
-                  {`, ${e.institution}, ${e.location}`}
+        {line3.length > 0 ? (
+          <Text style={[styles.contactLine, { marginBottom: 8 }]}>
+            {line3.map((part, i) => (
+              <Text key={i}>
+                {i > 0 ? " • " : ""}
+                <Text style={part === personalInfo.email.trim() ? styles.italic : undefined}>
+                  {part.trim()}
                 </Text>
-                <Text>
-                  {e.startYear} - {e.endYear}
-                </Text>
-              </View>
-            ))}
-          </View>
-        ) : null}
-
-        {projects.length > 0 ? (
-          <View>
-            <Text style={styles.sectionHeading}>Projects & Extra</Text>
-            {projects.map((p) => (
-              <View key={p.id} style={styles.row}>
-                <Text>
-                  <Text style={styles.bold}>{p.projectTitle}: </Text>
-                  {p.synopsis}
-                </Text>
-                <Text style={styles.bold}>{p.date}</Text>
-              </View>
-            ))}
-          </View>
-        ) : null}
-
-        {languages.length > 0 ? (
-          <View>
-            <Text style={styles.sectionHeading}>Languages</Text>
-            {languages.map((l) => (
-              <Text key={l.id}>
-                {l.language}: {l.proficiencyLabel} ({l.cefrLevel})
               </Text>
             ))}
-          </View>
+          </Text>
         ) : null}
 
-        {certifications.length > 0 ? (
-          <View>
-            <Text style={styles.sectionHeading}>Certifications</Text>
-            {certifications.map((c) => (
-              <View key={c.id} style={styles.row}>
-                <Text>
-                  {c.certName} ({c.issuer})
-                </Text>
-                <Text style={styles.bold}>{c.date}</Text>
-              </View>
-            ))}
-          </View>
-        ) : null}
+        {order.map((key) => sectionBlocks[key])}
       </Page>
     </Document>
   );

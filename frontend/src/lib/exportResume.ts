@@ -1,262 +1,276 @@
-import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from "docx";
+import {
+  AlignmentType,
+  BorderStyle,
+  Document,
+  Packer,
+  Paragraph,
+  TabStopPosition,
+  TabStopType,
+  TextRun,
+} from "docx";
 import { saveAs } from "file-saver";
 import { pdf } from "@react-pdf/renderer";
-import type { ResumeData } from "@/types/resume";
+import type { ResumeData, SectionKey } from "@/types/resume";
 import { ResumePdfDocument } from "./pdf/ResumePdfDocument";
 import React from "react";
+import {
+  TEMPLATE1_SECTION_ORDER,
+  TEMPLATE1_SECTION_TITLES,
+  TEMPLATE1_BLUE,
+  DOCX_SIZE_BODY,
+  DOCX_SIZE_HEADING,
+  DOCX_SIZE_NAME,
+} from "@/templates/template-1/template1Spec";
+import { htmlToDocxRuns, htmlToPlainText } from "@/templates/template-1/htmlToDocxRuns";
 
-const getListItems = (html: string) => {
-  if (!html) return [];
-  if (typeof window !== "undefined") {
-    const doc = new DOMParser().parseFromString(html, "text/html");
-    const items = Array.from(doc.body.querySelectorAll("li")).map((li) => li.textContent || "");
-    if (items.length > 0) return items;
-    return [doc.body.textContent || ""];
+function sectionHeading(title: string): Paragraph {
+  return new Paragraph({
+    spacing: { before: 100, after: 0 },
+    border: {
+      bottom: {
+        color: TEMPLATE1_BLUE,
+        size: 8,
+        style: BorderStyle.SINGLE,
+        space: 2,
+      },
+    },
+    children: [
+      new TextRun({
+        text: title,
+        color: TEMPLATE1_BLUE,
+        size: DOCX_SIZE_HEADING,
+      }),
+    ],
+  });
+}
+
+function bodyParagraph(children: TextRun[] | string, options?: { bullet?: boolean }): Paragraph {
+  if (typeof children === "string") {
+    return new Paragraph({
+      children: [new TextRun({ text: children, size: DOCX_SIZE_BODY })],
+      bullet: options?.bullet ? { level: 0 } : undefined,
+    });
   }
-  return [html.replace(/<[^>]+>/g, "")];
-};
+  return new Paragraph({
+    children,
+    bullet: options?.bullet ? { level: 0 } : undefined,
+  });
+}
 
-const stripHtml = (html: string) => {
-  if (!html) return "";
-  if (typeof window !== "undefined") {
-    const doc = new DOMParser().parseFromString(html, "text/html");
-    return doc.body.textContent || "";
-  }
-  return html.replace(/<[^>]+>/g, "");
-};
+function buildDocxChildren(data: ResumeData, order: SectionKey[]): Paragraph[] {
+  const { personalInfo, profile, skills, experience, education, projects, languages, certifications } =
+    data;
+  const cityCountry = [personalInfo.city, personalInfo.country].filter(Boolean).join(", ");
+  const children: Paragraph[] = [];
 
-export async function exportAsDocx(data: ResumeData, filename: string): Promise<void> {
-  const { personalInfo, profile, skills, experience, education, projects, languages, certifications } = data;
-
-  const children: any[] = [];
-
-  // Header
   children.push(
     new Paragraph({
       alignment: AlignmentType.CENTER,
       children: [
         new TextRun({
-          text: personalInfo.fullName || "Your Name",
-          bold: true,
-          size: 40,
+          text: personalInfo.fullName.trim() || "Your Name",
+          size: DOCX_SIZE_NAME,
         }),
       ],
     })
   );
 
-  const contactInfo = [
-    personalInfo.linkedinUrl,
-    personalInfo.portfolioUrl,
-    personalInfo.phone,
-    [personalInfo.city, personalInfo.country].filter(Boolean).join(", "),
-    personalInfo.email,
-  ]
-    .filter(Boolean)
-    .join(" | ");
-
-  if (contactInfo) {
+  const line2 = [personalInfo.linkedinUrl, personalInfo.portfolioUrl].filter((s) => s?.trim()).join(" • ");
+  if (line2) {
     children.push(
       new Paragraph({
         alignment: AlignmentType.CENTER,
-        children: [
-          new TextRun({
-            text: contactInfo,
-            size: 20,
-          }),
-        ],
+        children: [new TextRun({ text: line2, size: DOCX_SIZE_BODY, color: TEMPLATE1_BLUE })],
       })
     );
   }
 
-  // Profile
-  if (profile.summaryText) {
+  const line3Parts = [
+    personalInfo.phone?.trim(),
+    cityCountry,
+    personalInfo.email?.trim(),
+  ].filter(Boolean) as string[];
+
+  if (line3Parts.length > 0) {
+    const runs: TextRun[] = [];
+    line3Parts.forEach((part, i) => {
+      if (i > 0) runs.push(new TextRun({ text: " • ", size: DOCX_SIZE_BODY }));
+      runs.push(
+        new TextRun({
+          text: part,
+          size: DOCX_SIZE_BODY,
+          italics: part === personalInfo.email?.trim(),
+        })
+      );
+    });
+
     children.push(
       new Paragraph({
-        text: "PROFILE",
-        heading: HeadingLevel.HEADING_2,
-        spacing: { before: 300, after: 100 },
-      })
-    );
-    children.push(
-      new Paragraph({
-        text: stripHtml(profile.summaryText),
+        alignment: AlignmentType.CENTER,
+        children: runs,
       })
     );
   }
 
-  // Experience
-  if (experience.length > 0) {
-    children.push(
-      new Paragraph({
-        text: "EXPERIENCE",
-        heading: HeadingLevel.HEADING_2,
-        spacing: { before: 300, after: 100 },
-      })
-    );
-
-    experience.forEach((exp) => {
-      children.push(
-        new Paragraph({
-          children: [
-            new TextRun({ text: exp.jobTitle, bold: true }),
-            new TextRun({ text: `  |  ${exp.companyName}`, italics: true }),
-          ],
-        })
-      );
-      children.push(
-        new Paragraph({
-          children: [
-            new TextRun({
-              text: `${exp.location}  |  ${exp.startDate} - ${
-                exp.isCurrent ? "Present" : exp.endDate
-              }`,
-              size: 20,
-            }),
-          ],
-          spacing: { after: 100 },
-        })
-      );
-
-      const items = getListItems(exp.bulletPoints.join(""));
-      items.forEach((item) => {
-        if (item.trim()) {
+  const sectionBuilders: Record<SectionKey, () => void> = {
+    profile: () => {
+      if (!profile.summaryText.trim()) return;
+      children.push(sectionHeading(TEMPLATE1_SECTION_TITLES.profile));
+      const runs = htmlToDocxRuns(profile.summaryText);
+      children.push(bodyParagraph(runs.length ? runs : htmlToPlainText(profile.summaryText)));
+    },
+    skills: () => {
+      if (skills.length === 0) return;
+      children.push(sectionHeading(TEMPLATE1_SECTION_TITLES.skills));
+      skills.forEach((cat) => {
+        children.push(
+          new Paragraph({
+            children: [
+              new TextRun({ text: `${cat.categoryName}: `, bold: true, size: DOCX_SIZE_BODY }),
+              new TextRun({ text: cat.skills, size: DOCX_SIZE_BODY }),
+            ],
+          })
+        );
+      });
+    },
+    experience: () => {
+      if (experience.length === 0) return;
+      children.push(sectionHeading(TEMPLATE1_SECTION_TITLES.experience));
+      experience.forEach((job) => {
+        const dateRange = `${job.startDate} - ${job.isCurrent ? "Present" : job.endDate}`;
+        children.push(
+          new Paragraph({
+            tabStops: [
+              { type: TabStopType.LEFT, position: 3600 },
+              { type: TabStopType.RIGHT, position: TabStopPosition.MAX },
+            ],
+            children: [
+              new TextRun({ text: job.jobTitle, bold: true, size: DOCX_SIZE_BODY }),
+              new TextRun({ text: "\t", size: DOCX_SIZE_BODY }),
+              new TextRun({ text: job.companyName, bold: true, size: DOCX_SIZE_BODY }),
+              new TextRun({ text: "\t", size: DOCX_SIZE_BODY }),
+              new TextRun({ text: dateRange, bold: true, size: DOCX_SIZE_BODY }),
+            ],
+          })
+        );
+        if (job.location.trim()) {
+          children.push(bodyParagraph(job.location));
+        }
+        job.bulletPoints.forEach((bp) => {
+          if (!bp.trim()) return;
+          const runs = htmlToDocxRuns(bp);
           children.push(
             new Paragraph({
-              text: item.trim(),
+              children:
+                runs.length > 0
+                  ? runs
+                  : [new TextRun({ text: htmlToPlainText(bp), size: DOCX_SIZE_BODY })],
+              bullet: { level: 0 },
+            })
+          );
+        });
+      });
+    },
+    education: () => {
+      if (education.length === 0) return;
+      children.push(sectionHeading(TEMPLATE1_SECTION_TITLES.education));
+      education.forEach((edu) => {
+        children.push(
+          new Paragraph({
+            tabStops: [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }],
+            children: [
+              new TextRun({
+                text: `${edu.degreeType}: ${edu.fieldOfStudy}, ${edu.institution}, ${edu.location}`,
+                bold: true,
+                size: DOCX_SIZE_BODY,
+              }),
+              new TextRun({ text: "\t", size: DOCX_SIZE_BODY }),
+              new TextRun({
+                text: `${edu.startYear} - ${edu.endYear}`,
+                size: DOCX_SIZE_BODY,
+              }),
+            ],
+          })
+        );
+      });
+    },
+    projects: () => {
+      if (projects.length === 0) return;
+      children.push(sectionHeading(TEMPLATE1_SECTION_TITLES.projects));
+      projects.forEach((proj) => {
+        children.push(
+          new Paragraph({
+            tabStops: [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }],
+            bullet: { level: 0 },
+            children: [
+              new TextRun({ text: `${proj.projectTitle}:`, bold: true, size: DOCX_SIZE_BODY }),
+              new TextRun({ text: "\t", size: DOCX_SIZE_BODY }),
+              new TextRun({ text: proj.date, bold: true, size: DOCX_SIZE_BODY }),
+            ],
+          })
+        );
+        const synopsis = htmlToPlainText(proj.synopsis);
+        if (synopsis) {
+          const runs = htmlToDocxRuns(proj.synopsis);
+          children.push(
+            new Paragraph({
+              children: runs.length ? runs : [new TextRun({ text: synopsis, size: DOCX_SIZE_BODY })],
               bullet: { level: 0 },
             })
           );
         }
       });
-    });
-  }
+    },
+    languages: () => {
+      if (languages.length === 0) return;
+      children.push(sectionHeading(TEMPLATE1_SECTION_TITLES.languages));
+      languages.forEach((lang) => {
+        children.push(
+          bodyParagraph(`${lang.language}: ${lang.proficiencyLabel} (${lang.cefrLevel})`)
+        );
+      });
+    },
+    certifications: () => {
+      if (certifications.length === 0) return;
+      children.push(sectionHeading(TEMPLATE1_SECTION_TITLES.certifications));
+      certifications.forEach((cert) => {
+        children.push(
+          new Paragraph({
+            tabStops: [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }],
+            children: [
+              new TextRun({
+                text: `${cert.certName} (${cert.issuer})`,
+                size: DOCX_SIZE_BODY,
+              }),
+              new TextRun({ text: "\t", size: DOCX_SIZE_BODY }),
+              new TextRun({ text: cert.date, bold: true, size: DOCX_SIZE_BODY }),
+            ],
+          })
+        );
+      });
+    },
+  };
 
-  // Education
-  if (education.length > 0) {
-    children.push(
-      new Paragraph({
-        text: "EDUCATION",
-        heading: HeadingLevel.HEADING_2,
-        spacing: { before: 300, after: 100 },
-      })
-    );
+  order.forEach((key) => sectionBuilders[key]());
 
-    education.forEach((edu) => {
-      children.push(
-        new Paragraph({
-          children: [
-            new TextRun({ text: edu.institution, bold: true }),
-            new TextRun({
-              text: `  |  ${edu.startYear} - ${edu.endYear}`,
-            }),
-          ],
-        })
-      );
-      children.push(
-        new Paragraph({
-          children: [
-            new TextRun({
-              text: `${edu.degreeType} ${edu.fieldOfStudy ? `in ${edu.fieldOfStudy}` : ""}`,
-            }),
-            new TextRun({ text: `  |  ${edu.location}` }),
-          ],
-        })
-      );
-    });
-  }
+  return children;
+}
 
-  // Projects
-  if (projects.length > 0) {
-    children.push(
-      new Paragraph({
-        text: "PROJECTS",
-        heading: HeadingLevel.HEADING_2,
-        spacing: { before: 300, after: 100 },
-      })
-    );
-
-    projects.forEach((proj) => {
-      children.push(
-        new Paragraph({
-          children: [
-            new TextRun({ text: proj.projectTitle, bold: true }),
-            new TextRun({ text: `  |  ${proj.date}` }),
-          ],
-        })
-      );
-      children.push(
-        new Paragraph({
-          text: stripHtml(proj.synopsis),
-        })
-      );
-    });
-  }
-
-  // Skills
-  if (skills.length > 0) {
-    children.push(
-      new Paragraph({
-        text: "SKILLS",
-        heading: HeadingLevel.HEADING_2,
-        spacing: { before: 300, after: 100 },
-      })
-    );
-
-    skills.forEach((skill) => {
-      children.push(
-        new Paragraph({
-          children: [
-            new TextRun({ text: `${skill.categoryName}: `, bold: true }),
-            new TextRun({ text: skill.skills }),
-          ],
-        })
-      );
-    });
-  }
-
-  if (languages.length > 0) {
-    children.push(
-      new Paragraph({
-        text: "LANGUAGES",
-        heading: HeadingLevel.HEADING_2,
-        spacing: { before: 300, after: 100 },
-      })
-    );
-    languages.forEach((lang) => {
-      children.push(
-        new Paragraph({
-          text: `${lang.language}: ${lang.proficiencyLabel} (${lang.cefrLevel})`,
-        })
-      );
-    });
-  }
-
-  if (certifications.length > 0) {
-    children.push(
-      new Paragraph({
-        text: "CERTIFICATIONS",
-        heading: HeadingLevel.HEADING_2,
-        spacing: { before: 300, after: 100 },
-      })
-    );
-    certifications.forEach((cert) => {
-      children.push(
-        new Paragraph({
-          children: [
-            new TextRun({ text: cert.certName, bold: true }),
-            new TextRun({ text: ` (${cert.issuer})` }),
-            new TextRun({ text: `  |  ${cert.date}` }),
-          ],
-        })
-      );
-    });
-  }
-
+export async function exportAsDocx(
+  data: ResumeData,
+  filename: string,
+  sectionOrder?: SectionKey[]
+): Promise<void> {
+  const order = sectionOrder?.length ? sectionOrder : TEMPLATE1_SECTION_ORDER;
   const doc = new Document({
     sections: [
       {
-        properties: {},
-        children,
+        properties: {
+          page: {
+            margin: { top: 720, right: 720, bottom: 720, left: 720 },
+          },
+        },
+        children: buildDocxChildren(data, order),
       },
     ],
   });
@@ -265,8 +279,13 @@ export async function exportAsDocx(data: ResumeData, filename: string): Promise<
   saveAs(blob, filename);
 }
 
-export async function exportAsPdf(data: ResumeData, filename: string): Promise<void> {
-  const element = React.createElement(ResumePdfDocument, { data }) as any;
+export async function exportAsPdf(
+  data: ResumeData,
+  filename: string,
+  sectionOrder?: SectionKey[]
+): Promise<void> {
+  const order = sectionOrder?.length ? sectionOrder : TEMPLATE1_SECTION_ORDER;
+  const element = React.createElement(ResumePdfDocument, { data, sectionOrder: order }) as React.ReactElement;
   const blob = await pdf(element).toBlob();
   saveAs(blob, filename);
 }

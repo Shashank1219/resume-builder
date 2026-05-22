@@ -25,7 +25,7 @@ export default function EditorPage() {
   const handleExportDocx = async (): Promise<void> => {
     setIsExporting("docx");
     try {
-      await exportAsDocx(resumeData, "resume.docx");
+      await exportAsDocx(resumeData, "resume.docx", sectionOrder);
     } finally {
       setIsExporting(null);
     }
@@ -34,7 +34,7 @@ export default function EditorPage() {
   const handleExportPdf = async (): Promise<void> => {
     setIsExporting("pdf");
     try {
-      await exportAsPdf(resumeData, "resume.pdf");
+      await exportAsPdf(resumeData, "resume.pdf", sectionOrder);
     } finally {
       setIsExporting(null);
     }

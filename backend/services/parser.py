@@ -402,7 +402,7 @@ def parse_pdf(file_bytes: bytes) -> ResumeParseResponse:
             continue
 
         lower_line = line.lower()
-        if lower_line in ["profile", "skills & technologies", "work experience", "education", "projects & extra", "languages", "certification", "certifications"]:
+        if lower_line in ["profile", "skills & technologies", "work experience", "education", "projects", "languages", "certification", "certifications"]:
             if "profile" in lower_line:
                 current_section = "PROFILE"
             elif "skills" in lower_line:
