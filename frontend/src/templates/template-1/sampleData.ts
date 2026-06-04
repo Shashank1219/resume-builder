@@ -8,7 +8,7 @@ export const sampleResumeData: ResumeData = {
     phone: "+49 151 23456789",
     city: "Berlin",
     country: "Germany",
-    email: "alex.morgan@email.com",
+    email: "john.doe@email.com",
   },
   profile: {
     summaryText:
