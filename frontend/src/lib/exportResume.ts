@@ -9,7 +9,7 @@ import {
   TextRun,
 } from "docx";
 import { saveAs } from "file-saver";
-import { pdf } from "@react-pdf/renderer";
+import { Document as PdfDocument, pdf } from "@react-pdf/renderer";
 import type { ResumeData, SectionKey } from "@/types/resume";
 import { ResumePdfDocument } from "./pdf/ResumePdfDocument";
 import React from "react";
@@ -285,7 +285,9 @@ export async function exportAsPdf(
   sectionOrder?: SectionKey[]
 ): Promise<void> {
   const order = sectionOrder?.length ? sectionOrder : TEMPLATE1_SECTION_ORDER;
-  const element = React.createElement(ResumePdfDocument, { data, sectionOrder: order }) as React.ReactElement;
-  const blob = await pdf(element).toBlob();
+  const element = React.createElement(ResumePdfDocument, { data, sectionOrder: order });
+  const blob = await pdf(
+    element as React.ReactElement<React.ComponentProps<typeof PdfDocument>>
+  ).toBlob();
   saveAs(blob, filename);
 }

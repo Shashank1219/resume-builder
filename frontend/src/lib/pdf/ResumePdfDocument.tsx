@@ -1,3 +1,4 @@
+import type React from "react";
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import type { ResumeData, SectionKey } from "@/types/resume";
 import {
@@ -41,7 +42,7 @@ interface Props {
   sectionOrder?: SectionKey[];
 }
 
-export function ResumePdfDocument({ data, sectionOrder }: Props): JSX.Element {
+export function ResumePdfDocument({ data, sectionOrder }: Props): React.ReactElement {
   const { personalInfo, profile, skills, experience, education, projects, languages, certifications } =
     data;
   const order = sectionOrder?.length ? sectionOrder : TEMPLATE1_SECTION_ORDER;
@@ -50,7 +51,7 @@ export function ResumePdfDocument({ data, sectionOrder }: Props): JSX.Element {
   const line2 = [personalInfo.linkedinUrl, personalInfo.portfolioUrl].filter((s) => s?.trim());
   const line3 = [personalInfo.phone, cityCountry, personalInfo.email].filter((s) => s?.trim());
 
-  const sectionBlocks: Record<SectionKey, JSX.Element | null> = {
+  const sectionBlocks: Record<SectionKey, React.ReactElement | null> = {
     profile: profile.summaryText.trim() ? (
       <View key="profile">
         <Text style={styles.sectionHeading}>{TEMPLATE1_SECTION_TITLES.profile}</Text>
