@@ -87,8 +87,7 @@ resume-builder/
     │   ├── templates/
     │   │   └── template-1/      # Template1.tsx, sampleData.ts
     │   └── types/
-    │       └── resume.ts        # Shared TypeScript types
-    └── AGENTS.md                # Agentic coding guidelines for this repo
+            └── resume.ts        # Shared TypeScript types
 ```
 
 ---
